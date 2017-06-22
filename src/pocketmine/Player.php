@@ -902,9 +902,6 @@ class Player extends Human implements CommandSender, InventoryHolder, ChunkLoade
 				$this->getDisplayName()
 			])
 		));
-		if(strlen(trim((string) $ev->getJoinMessage())) > 0){
-			$this->server->broadcastMessage($ev->getJoinMessage());
-		}
 
 		$this->noDamageTicks = 60;
 
@@ -1505,10 +1502,6 @@ class Player extends Human implements CommandSender, InventoryHolder, ChunkLoade
 
 		$revert = false;
 
-		if(($distanceSquared / ($tickDiff ** 2)) > 100 and !$this->allowMovementCheats){
-			$this->server->getLogger()->warning($this->getName() . " moved too fast, reverting movement");
-			$revert = true;
-		}else{
 			if($this->chunk === null or !$this->chunk->isGenerated()){
 				$chunk = $this->level->getChunk($newPos->x >> 4, $newPos->z >> 4, false);
 				if($chunk === null or !$chunk->isGenerated()){
@@ -1521,7 +1514,6 @@ class Player extends Human implements CommandSender, InventoryHolder, ChunkLoade
 					$this->chunk = $chunk;
 				}
 			}
-		}
 
 		if(!$revert and $distanceSquared != 0){
 			$dx = $newPos->x - $this->x;
@@ -1535,19 +1527,6 @@ class Player extends Human implements CommandSender, InventoryHolder, ChunkLoade
 			$diffZ = $this->z - $newPos->z;
 
 			$diff = ($diffX ** 2 + $diffY ** 2 + $diffZ ** 2) / ($tickDiff ** 2);
-
-			if($this->isSurvival() and !$revert and $diff > 0.0625){
-				$ev = new PlayerIllegalMoveEvent($this, $newPos);
-				$ev->setCancelled($this->allowMovementCheats);
-
-				$this->server->getPluginManager()->callEvent($ev);
-
-				if(!$ev->isCancelled()){
-					$revert = true;
-					$this->server->getLogger()->warning($this->getServer()->getLanguage()->translateString("pocketmine.player.invalidMove", [$this->getName()]));
-				}
-			}
-
 			if($diff > 0){
 				$this->x = $newPos->x;
 				$this->y = $newPos->y;
@@ -1899,16 +1878,9 @@ class Player extends Human implements CommandSender, InventoryHolder, ChunkLoade
 		$this->setNameTagAlwaysVisible(true);
 		$this->setCanClimb(true);
 
-		$this->server->getLogger()->info($this->getServer()->getLanguage()->translateString("pocketmine.player.logIn", [
-			TextFormat::AQUA . $this->username . TextFormat::WHITE,
-			$this->ip,
-			$this->port,
-			$this->id,
-			$this->level->getName(),
-			round($this->x, 4),
-			round($this->y, 4),
-			round($this->z, 4)
-		]));
+
+		$this->server->getLogger()->info(TextFormat::LIGHT_PURPLE . $this->getName().TextFormat::GREEN . " logged in [IP: ".$this->ip . "/" ."Port: ".$this->port. "Level: ".$this->level->getName()
+		 . "Vector 3: (". $this->x ."," . $this->y . ", " . $this->z . ")");
 
 		if($this->isOp()){
 			$this->setRemoveFormat(false);
@@ -3191,10 +3163,6 @@ class Player extends Human implements CommandSender, InventoryHolder, ChunkLoade
 			}
 		}
 
-		if($packet->noClip and !$this->allowMovementCheats and !$this->isSpectator()){
-			$this->kick($this->server->getLanguage()->translateString("kick.reason.cheat", ["%ability.noclip"]));
-			return true;
-		}
 
 		//TODO: check other changes
 
@@ -3473,7 +3441,7 @@ class Player extends Human implements CommandSender, InventoryHolder, ChunkLoade
 		if(!$ev->isCancelled()){
 			if($isAdmin){
 				if(!$this->isBanned()){
-					$message = "Kicked by admin." . ($reason !== "" ? " Reason: " . $reason : "");
+					$message = "Kicked by admin." . ($reason !== "" ? "" . $reason : "");
 				}else{
 					$message = $reason;
 				}
@@ -3670,9 +3638,6 @@ class Player extends Human implements CommandSender, InventoryHolder, ChunkLoade
 					}
 
 					$this->server->getPluginManager()->callEvent($ev = new PlayerQuitEvent($this, $message));
-					if($ev->getQuitMessage() != ""){
-						$this->server->broadcastMessage($ev->getQuitMessage());
-					}
 				}
 				$this->joined = false;
 
@@ -3709,12 +3674,8 @@ class Player extends Human implements CommandSender, InventoryHolder, ChunkLoade
 
 				$this->loggedIn = false;
 
-				$this->server->getLogger()->info($this->getServer()->getLanguage()->translateString("pocketmine.player.logOut", [
-					TextFormat::AQUA . $this->getName() . TextFormat::WHITE,
-					$this->ip,
-					$this->port,
-					$this->getServer()->getLanguage()->translateString($reason)
-				]));
+
+				$this->server->getLogger()->info(TextFormat::LIGHT_PURPLE . $this->getName().TextFormat::RED . " logged out [IP: ".$this->ip . "/" ."Port: ".$this->port);
 
 				$this->spawnPosition = null;
 
